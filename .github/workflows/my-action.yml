@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Print hello world
-        run: echo ${{ github.action }}
+        run: echo ${{ github.action_repository }}
