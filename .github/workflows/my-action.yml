@@ -3,9 +3,15 @@ on:
   - push
 
 jobs:
-  the-first-job:
+  my-first-job:
     name: My first job
     runs-on: ubuntu-latest
     steps:
       - name: Print hello world
         run: echo "Hello world!"
+  my-second-job:
+    name: My second job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print hello world
+        run: echo "Hello other world!"
