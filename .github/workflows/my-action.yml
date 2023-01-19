@@ -9,3 +9,12 @@ jobs:
     steps:
       - name: Print hello world
         run: cat /etc/os-release
+      - name: CPU
+        run: cat /proc/cpuinfo
+      - name: Ram
+        run: free -m
+      - name: ls pwd
+        run: |
+          ls -a
+          pwd
+          whoami
