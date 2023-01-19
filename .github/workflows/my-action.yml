@@ -8,12 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Print hello world
-        run: cat /etc/os-release
-      - name: Checkout action
-        uses: actions/checkout@v3
-      - name: ls
-        run: ls -a
-      - name: Node version
-        run: node -v
-      - name: npm i
-        run: npm i
+        run: echo 'Hi ${{ env }}'
