@@ -15,3 +15,5 @@ jobs:
         run: ls -a
       - name: Node version
         run: node -v
+      - name: npm i
+        run: npm i
