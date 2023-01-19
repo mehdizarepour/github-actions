@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Print hello world
-        run: echo ${{ toJSON(env) }}
+        run: echo ${{ github.action }}
