@@ -1,0 +1,146 @@
+Caching on GitHub Actions
+Caching on GitHub Actions allows you to save the state of specific files or directories between runs of a workflow. This can significantly speed up the execution of a workflow by allowing you to reuse the cached files or directories instead of recreating them. Caching is typically used for dependencies, build artifacts, or other files that take a long time to generate but do not change often. GitHub Actions supports caching via the cache action. You can specify the files or  directories to cache, as well as the key to use for the cache, which is  used to identify the cache when it is restored. The cache can be stored  on different providers like gcs, s3, azure etc.
+By default, the cache is stored on the GitHub servers when using GitHub Actions. Specifically, the cache is stored in a GitHub Actions artifact cache, which is a shared cache that can be accessed by all workflows running on the same repository. The cache is stored in the repository's GitHub Actions artifacts storage and can be shared across multiple workflows and jobs within a single repository.
+The cache is keyed using a combination of the repository name, the branch name, and the cache key specified in the workflow configuration. This ensures that caches from different branches or different runs with different cache keys do not interfere with each other.
+It's also worth noting that the cache storage is limited, so be mindful of the size of the files you are caching and how often you are using the cache action in your workflow.
+the cache storage is limited per repository on GitHub. The exact amount of storage available can vary depending on the plan that the repository owner has chosen.
+For GitHub Free and GitHub Pro repositories, the cache storage is limited to 2 GB per repository. This means that the combined size of all files stored in the cache for a particular repository cannot exceed 2 GB.
+For GitHub Team and GitHub Enterprise Cloud repositories, the cache storage is limited to 5 GB per repository.
+For GitHub Enterprise Server, you can set your own cache storage limit, so it depends on your server configuration.
+It's important to note that the cache storage is shared by all workflows and jobs running on the same repository, so if you have multiple workflows or jobs that use caching, you'll need to take into account the combined storage requirements of all of them.
+If you find that you are approaching the storage limit for your repository, you can either remove some of the files from the cache or consider using a caching solution that is not limited by storage space, such as a caching service like GCS, S3 or Azure.
+How can I clean the cache?
+There are a few ways to clean the cache on GitHub Actions:
+Manually deleting the cache: You can manually delete the cache from the GitHub Actions artifacts page for your repository. Go to the repository's "Actions" tab, then click on the "Artifacts" button. On the artifacts page, you can find the cache and delete it by clicking on the trash can icon on the right side of the cache.
+Using the actions/cache action: You can use the actions/cache action to clear the cache programmatically. By using the --clear flag you can clear all the cache associated with a particular key or all the cache associated with a particular repository.
+Using the GitHub API: You can use the GitHub API to clear the cache programmatically. You can use the DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id} API to delete the cache by its artifact id.
+
+It's worth noting that when you delete the cache, it will be permanently removed and will not be recoverable. Be sure to only delete the cache that you no longer need, and make sure you don't accidentally delete the cache that you still need.
+It's also good practice to set cache expiration time on the cache action, so that the cache will be automatically deleted after a certain period of time, this way you won't have to worry about cleaning the cache.
+Cache levels
+In GitHub Actions, caching can be done at both the step level and the job level.
+Step-level caching refers to caching the state of a specific step in a workflow, such as caching the contents of a directory or the output of a command. This type of caching is useful for steps that take a long time to execute, such as installing dependencies or building a project.
+Job-level caching refers to caching the state of the entire job, including all of the steps and actions. This type of caching is useful for jobs that take a long time to execute or that are resource-intensive.
+Step-level caching is more granular and can be used to cache specific parts of a job, while job-level caching is used to cache the entire job.
+In general, step-level caching is more efficient and faster, but it can be more complex to set up, while job-level caching is easier to set up, but it can be less efficient.
+It's important to keep in mind that caching can be a powerful tool to improve the performance and efficiency of your workflow, but it can also increase the complexity of your workflow. It's important to choose the right type of caching and to use it in the right way to get the best performance and efficiency.
+Step level cache
+Here is an example of using the actions/cache action to cache the node_modules directory in a JavaScript project using Node.js:
+name: Node.js CI
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Restore cache
+      id: restore_cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Save cache
+      id: save_cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+This workflow is triggered on push event, and it has a single job called "build" that runs on the latest version of Ubuntu.
+The first step is to check out the code.
+The second step is to restore the cache using the actions/cache action. The path parameter is set to node_modules, and the key parameter is set to a combination of the operating system, "node", and the hash of the package-lock.json file. This key is used to identify the cache and restore it if it exists.
+The third step is to install the dependencies using npm ci.
+The fourth step is to save the cache using the actions/cache action. This step uses the same path and key parameters as the previous step. The cache will be saved after the dependencies are installed, so that it can be reused in future runs of the workflow.
+It's also worth noting that, you can also set the timeout parameter in the action, which will set the time in seconds before the action times out. This can be useful if the cache is stored remotely and the network connection is slow.
+Job level
+Here is an example of job-level caching, that caches the entire job, including all of the steps and actions:
+name: Node.js CI
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    cache:
+      paths:
+        - node_modules/
+        - ${{ env.HOME }}/.npm/
+      key: ${{ runner.os }}-job-${{ hashFiles('**/package-lock.json') }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: npm ci
+    - name: Build project
+      run: npm run build
+In this workflow, the cache property is used at the job level to specify the paths that need to be cached and the key that will be used to identify the cache.
+The paths parameter is set to the directories that need to be cached, in this case, node_modules/ and ${{ env.HOME }}/.npm/ and the key parameter is set to a combination of the operating system, "-job-" and the package lock file hash, this key is used to identify the cache and restore it if it exists.
+By caching at the job level, we can ensure that all steps of the job are cached, including all dependencies, environment variables, and other data that may be needed to run the job.
+Job level vs Step level
+You are correct, step-level caching and job-level caching are different in terms of how they are implemented in GitHub Actions.
+Step-level caching is implemented using the actions/cache action, which is a built-in action in GitHub Actions that can be used to cache and restore specific files or directories. This action provides a simple and easy-to-use interface for caching and restoring the state of a specific step in a workflow.
+Job-level caching, on the other hand, is implemented using the cache property at the job level, which allows you to cache entire jobs, including all of the steps and actions. The cache property provides a way to specify the paths that need to be cached and the key that will be used to identify the cache.
+
+Cache action is using step level cache behind the scene
+The actions/cache action is a built-in action in GitHub Actions that provides a simple and convenient way to use the cache property on the step level.
+The actions/cache action allows you to easily cache and restore specific files or directories, without the need to manually configure the cache property for each step. It has a set of inputs that correspond to the properties of the cache object, such as path, key, restore-keys, prefix, ttl.
+The actions/cache action is a simple and easy-to-use interface for caching and restoring the state of a specific step in a workflow, but it's not the only way to use caching on step level, you can use the cache property in your steps too, it's just a matter of preference.
+you can use the cache property in a step level and inherit the values from the job level, but override them if needed:
+name: Node.js CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    cache:
+      paths:
+        - node_modules/
+        - ${{ env.HOME }}/.npm/
+      key: ${{ runner.os }}-job-${{ hashFiles('**/package-lock.json') }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: npm ci
+      cache:
+        paths:
+          - node_modules/
+        key: ${{ runner.os }}-dependencies-${{ hashFiles('**/package-lock.json') }}
+    - name: Build project
+      run: npm run build
+In this workflow, the cache property is used at the job level to specify the default paths that need to be cached, and the key that will be used to identify the cache.
+Then in the step Install dependencies, the cache property is used again to specify the specific paths that need to be cached, but this time it's specific to this step and it overrides the job level caching path and key, this way we can cache only the needed data for this step and not the entire job.
+By using the cache property in this way, you can inherit the values from the job level, but also override them as needed to improve the performance and efficiency of your workflow.
+best approach for choosing the key name
+The best approach for choosing the key name for caching depends on the specific use case and requirements of the workflow. Here are a few general guidelines that can help you choose an appropriate key name:
+Make it unique : The key name should be unique to the specific version of the files or directories being cached. This will ensure that the correct cache is restored and that stale data is not used.
+Make it readable : The key name should be readable and easy to understand. This will make it easier to troubleshoot and maintain the workflow.
+Use context variables : You can use context variables, such as the current branch, commit hash, or event type, to make the key name unique to the specific version of the files or directories being cached.
+Use expressions : You can use expressions, such as the hash of the files or directories being cached, to make the key name unique to the specific version of the files or directories being cached.
+Include the language and version : If your workflow is language-specific, include the language and version in the key name, this will help you to identify the cache more easily.
+Include the OS : If your workflow is running on different OS, include the OS in the key name, this will help you to identify the cache more easily.
+Keep it simple : Keep the key name simple and avoid using unnecessary characters or words that can make it harder to read and understand.
+
+It's important to keep in mind that the key name should be unique and readable, and that it should reflect the specific version of the files or directories being cached. By using this approach, you can ensure that the correct cache is restored and that stale data is not used.
+here's an example of how you can use context variables and expressions to generate a unique and readable key name for caching:
+- name: Install dependencies
+  run: npm ci
+  cache:
+    key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-dependencies-${{ hashFiles('**/package-lock.json') }}
+In this example, the key name for the cache is generated using a combination of the following:
+${{ runner.os }}: The operating system of the runner.
+node-${{ env.NODE_VERSION }}: The version of Node.js used in the workflow.
+dependencies-: A string that indicates that this cache is for dependencies
+${{ hashFiles('**/package-lock.json') }} : A hash of the package-lock.json file, this ensures that the key is unique to the specific version of the files being cached.
+
+The key name is generated by combining these elements, creating a unique and readable key that can be used to identify the cache. With this approach, you can ensure that the correct cache is restored and that stale data is not used.
+You can use similar approach for other languages or frameworks, for example if you are using python you can use PIPENV_ACTIVE or PYTHON_VERSION, or if you are using java you can use JAVA_HOME.
+It's important to keep in mind that this is just an example, and you should choose the approach that best fits your use case.
